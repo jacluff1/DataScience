@@ -25,6 +25,5 @@ class Layer:
     def feed_forward_H(self,X):
         self.H = np.matmul(X,self.W) + self.b
 
-
     def feed_forward_Z(self,**kwargs):
         self.Z = self.af.f(self.H,**kwargs)

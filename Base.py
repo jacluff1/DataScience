@@ -7,6 +7,19 @@ class Base:
         pass
 
     #===========================================================================
+    # basic
+    #===========================================================================
+
+    def predict(self,PHI):
+
+        # check input
+        assert hasattr(self,'W'), "Need to train model first dumb dumb!"
+        assert PHI.shape[1] == self.W.shape[0], "Can't find Y_hat: PHI and W don't match!"
+
+        # output
+        return PHI.dot(self.W)
+
+    #===========================================================================
     # normalize
     #===========================================================================
 
@@ -43,7 +56,7 @@ class Base:
     # cross validation
     #===========================================================================
 
-    def _cv_tvt_add_sets(self,**kwargs):
+    def _cv_tvt_pickle_sets(self,**kwargs):
 
         # kwargs
         train_frac = kwargs['train_frac'] if 'train_frac' in kwargs else .60
@@ -78,11 +91,15 @@ class Base:
             PHI2 = self._normalize_data(PHI2,PHI1)
             PHI3 = self._normalize_data(PHI3,PHI1)
 
-        # add results as attributes
-        self.train = dict(PHI=PHI1, Y=Y1, normalized=normalize)
-        self.validate = dict(PHI=PHI2, Y=Y2, normalized=normalize)
-        self.test = dict(PHI=PHI3, Y=Y3, normalized=normalize)
-        print("\nadded dictionaries 'train', 'validate', and 'test' to attributes. ")
+        # # add results as attributes
+        # self.train = dict(PHI=PHI1, Y=Y1, normalized=normalize)
+        # self.validate = dict(PHI=PHI2, Y=Y2, normalized=normalize)
+        # self.test = dict(PHI=PHI3, Y=Y3, normalized=normalize)
+
+        pd.Series( dict(PHI=PHI1, Y=Y1, normalized=normalize) ).to_pickle('./train.pkl')
+        pd.Series( dict(PHI=PHI2, Y=Y2, normalized=normalize) ).to_pickle('./validate.pkl')
+        pd.Series( dict(PHI=PHI3, Y=Y3, normalized=normalize) ).to_pickle('./test.pkl')
+        print("\nsaved 'train.pkl', 'validate.pkl', and 'test.pkl'")
 
     #===========================================================================
     # diagnostic

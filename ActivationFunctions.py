@@ -8,12 +8,14 @@ class softmax:
         pass
 
     @staticmethod
-    def f(H,**kwargs):
+    def f(*args,**kwargs):
+        H = args[0]
         eH = np.exp(H)
         return eH / eH.sum(axis=1, keepdims=True)
 
     @ staticmethod
-    def df(H,**kwargs):
+    def df(*args,**kwargs):
+        H = args[0]
         eH = np.exp(H)
         P = eH / eH.sum(axis=1, keepdims=True)
         return P * (1 - P)
@@ -24,13 +26,15 @@ class tanh:
         pass
 
     @staticmethod
-    def f(H,**kwargs):
+    def f(*args,**kwargs):
+        H = args[0]
         eH = np.exp(H)
         eHn = np.exp(-H)
         return (eH - eHn) / (eH + eHn)
 
     @staticmethod
-    def df(H,**kwargs):
+    def df(*args,**kwargs):
+        H = args[0]
         eH = np.exp(H)
         eHn = np.exp(-H)
         P = (eH - eHn) / (eH + eHn)
@@ -42,12 +46,15 @@ class ReLU:
         pass
 
     @staticmethod
-    def f(H,**kwargs):
+    def f(*args,**kwargs):
+        H = args[0]
         return H*(H > 0)
 
     @staticmethod
-    def df(H,**kwargs):
-        return 1*(H > 0)
+    def df(*args,**kwargs):
+        dZ = args[0],
+        Z = args[1]
+        return dZ*(Z > 0)
 
 class LReLU:
 
@@ -55,12 +62,14 @@ class LReLU:
         pass
 
     @staticmethod
-    def f(H,**kwargs):
+    def f(*args,**kwargs):
         alpha = kwargs['alpha'] if 'alpha' in kwargs else 0.01
-        # pdb.set_trace()
+        H = args[0]
         return H*(H >= 0) + H*alpha*(H < 0)
 
     @staticmethod
-    def df(H,**kwargs):
+    def df(*args,**kwargs):
         alpha = kwargs['alpha'] if 'alpha' in kwargs else 0.01
-        return 1*(H >= 0) + alpha*(H < 0)
+        dZ = args[0]
+        Z = args[1]
+        return dZ*(Z >= 0) + alpha*dZ*(Z < 0)

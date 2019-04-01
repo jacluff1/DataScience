@@ -4,8 +4,10 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import pdb
+import os
 # import internal dependencies
 from DataScience.Layer import Layer
+from DataScience.Base import Base
 
 #===============================================================================
 # functions
@@ -22,17 +24,33 @@ def one_hot_encode(y):
 
     return Y
 
+def collapse_Y(Y):
+    if Y.shape[0] != Y.size:
+        Y = Y[Y.argmax(axis=1)][:,0]
+    return Y
+
+def softmax(H):
+    eH = np.exp(H)
+    return eH / eH.sum(axis=1, keepdims=True)
+
 def cross_entropy(Y,P_hat):
     return -np.sum(Y*np.log(P_hat))
 
 def accuracy(Y, P_hat):
-    return np.mean(Y.argmax(axis=1) == P_hat.argmax(axis=1))
+    if Y.size != Y.shape[0]:
+        Y = collapse_Y(Y)
+    return np.mean(Y == P_hat.argmax(axis=1))
+
+def confusion_matrix(Y,Y_hat):
+    if Y.size == Y.shape[0]: Y1 = one_hot_encode_Y(Y)
+    if Y_hat.size == Y_hat.shape[0]: Y_hat1 = one_hot_encode_Y(Y_hat)
+    return np.matmul(Y1.T,Y_hat1)
 
 #===============================================================================
 # ANN class
 #===============================================================================
 
-class ArtificalNeuralNet:
+class ArtificalNeuralNet(Base):
 
     def __init__(self,X,Y,activation_functions,Ms):
         """
@@ -46,8 +64,8 @@ class ArtificalNeuralNet:
         # basic set up
         #=======================================================================
 
-        # assign input data to instance
-        self.X = X
+        # # assign input data to instance
+        # self.X = X
 
         # get number of layers
         self.L = len(activation_functions)
@@ -90,6 +108,16 @@ class ArtificalNeuralNet:
 
     def __str__(self):
         pass
+
+    #===========================================================================
+    # basic
+    #===========================================================================
+
+    def predict(self,X):
+         Z = X.dot(self.layers[1].W) + self.layers[1].b
+         for l in range(2,self.L+1):
+             Z = Z.dot(self.layers[l].W) + self.layers[1].b
+         return Z
 
     #===========================================================================
     # feed forward
@@ -166,5 +194,52 @@ class ArtificalNeuralNet:
             plt.figure()
             plt.plot(J)
             plt.title(f"$\\eta$: {eta}, epochs: {epochs}")
+            if not os.path.isdir("J"): os.mkdir("J")
             plt.savefig(f"J/J_eta_{eta}_epochs_{epochs}.pdf")
             plt.close()
+
+    #==============================================================================
+    # train validate test
+    #==============================================================================
+
+    def train_validate_test(self,train,validate,test,**kwargs):
+
+        # kwargs
+        linearRegression = kwargs['linearRegression'] if 'linearRegression' in kwargs else False
+
+        # train
+        self.back_propagation(train['PHI'],train['Y'],**kwargs)
+
+        pdb.set_trace()
+
+        # LogisticRegression
+        if linearRegression:
+            None
+        else:
+
+            # continue train
+            P_hat_train = self.layers[self.L].Z
+            ac_train = accuracy(train['Y'],P_hat_train)
+
+            # validate
+            P_hat_validate = self.predict(validate['PHI'])
+            ac_validate = accuracy(validate['Y'],P_hat_validate)
+
+            # test
+            P_hat_test = self.predict(test['PHI'])
+            ac_test = accuracy(test['Y'],P_hat_test)
+
+            # accuracies
+            results = dict(train=ac_train, validate=ac_validate, test=ac_test, Y_hat=self.feed_forward(test['PHI']))
+
+            # weights
+            weights = {}
+            for l in self.layers:
+                weights[l] = self.layers[l].W
+
+            # results
+            results.update(weights)
+            if len(kwargs) > 0: results.update(kwargs)
+
+            # output
+            return results
