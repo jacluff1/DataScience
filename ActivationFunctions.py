@@ -8,17 +8,15 @@ class softmax:
         pass
 
     @staticmethod
-    def f(*args,**kwargs):
-        H = args[0]
+    def f(H,**kwargs):
         eH = np.exp(H)
+        assert np.all(np.isfinite(eH)), "NOOOOO! try decreasing learning rate."
         return eH / eH.sum(axis=1, keepdims=True)
 
     @ staticmethod
-    def df(*args,**kwargs):
-        H = args[0]
-        eH = np.exp(H)
-        P = eH / eH.sum(axis=1, keepdims=True)
-        return P * (1 - P)
+    def df(H,**kwargs):
+        Z = self.f(H)
+        return Z * (1 - Z)
 
 class tanh:
 
@@ -26,19 +24,15 @@ class tanh:
         pass
 
     @staticmethod
-    def f(*args,**kwargs):
-        H = args[0]
-        eH = np.exp(H)
-        eHn = np.exp(-H)
-        return (eH - eHn) / (eH + eHn)
+    def f(H,**kwargs):
+        # eH = np.exp(H)
+        # eHn = np.exp(-H)
+        # return (eH - eHn) / (eH + eHn)
+        return np.tanh(H)
 
     @staticmethod
-    def df(*args,**kwargs):
-        H = args[0]
-        eH = np.exp(H)
-        eHn = np.exp(-H)
-        P = (eH - eHn) / (eH + eHn)
-        return 1 - P**2
+    def df(Z,**kwargs):
+        return 1 - Z**2
 
 class ReLU:
 
@@ -46,15 +40,12 @@ class ReLU:
         pass
 
     @staticmethod
-    def f(*args,**kwargs):
-        H = args[0]
+    def f(H,**kwargs):
         return H*(H > 0)
 
     @staticmethod
-    def df(*args,**kwargs):
-        dZ = args[0],
-        Z = args[1]
-        return dZ*(Z > 0)
+    def df(Z,**kwargs):
+        return 1*(Z > 0)
 
 class LReLU:
 
@@ -62,14 +53,11 @@ class LReLU:
         pass
 
     @staticmethod
-    def f(*args,**kwargs):
+    def f(H,**kwargs):
         alpha = kwargs['alpha'] if 'alpha' in kwargs else 0.01
-        H = args[0]
         return H*(H >= 0) + H*alpha*(H < 0)
 
     @staticmethod
-    def df(*args,**kwargs):
+    def df(Z,**kwargs):
         alpha = kwargs['alpha'] if 'alpha' in kwargs else 0.01
-        dZ = args[0]
-        Z = args[1]
-        return dZ*(Z >= 0) + alpha*dZ*(Z < 0)
+        return 1*(Z >= 0) + alpha*(Z < 0)

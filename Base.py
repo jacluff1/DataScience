@@ -1,5 +1,6 @@
 # import external dependencies
 import numpy as np
+import pandas as pd
 
 class Base:
 
@@ -56,53 +57,106 @@ class Base:
     # cross validation
     #===========================================================================
 
-    def _cv_tvt_pickle_sets(self,**kwargs):
+    def _cv_tvt_data_sets(self,PHI,Y,**kwargs):
 
         # kwargs
+        assign = kwargs['assign'] if 'assign' in kwargs else True
+        output = kwargs['output'] if 'output' in kwargs else False
+        pickle = kwargs['pickle'] if 'pickle' in kwargs else False
         train_frac = kwargs['train_frac'] if 'train_frac' in kwargs else .60
         validate_frac = kwargs['validate_frac'] if 'validate_frac' in kwargs else .20
         normalize = kwargs['normalize'] if 'normalize' in kwargs else True
 
-        # start with the initial data
-        PHI = self.PHI.copy()
-        Y = self.Y.copy()
+        # number of obseravation in entire set
+        N = PHI.shape[0]
 
-        # get mask to shuffle for train-validate-test
-        mask = np.arange(self.N)
-        np.random.shuffle(mask)
-        PHI0,Y0 = PHI[mask],Y[mask]
+        # shuffle data
+        PHI,Y = self._shuffle(PHI,Y)
+
+        try:
+            self.K = Y.shape[1]
+        except:
+            Y = self._one_hot_encode(Y)
+            self.K = Y.shape[1]
 
         # get number of observations for each set
-        N1 = int(self.N*train_frac)
-        N2 = int(self.N*validate_frac)
-        N3 = self.N - N1 - N2
+        N1 = int(N*train_frac)
+        N2 = int(N*validate_frac)
+        N3 = N - N1 - N2
 
         # split randomized observations into training (1), validation (2), and testing (3)
-        PHI1 = PHI0[:N1]
-        PHI2 = PHI0[N1:N1+N2]
-        PHI3 = PHI0[N1+N2:]
-        Y1 = Y0[:N1]
-        Y2 = Y0[N1:N1+N2]
-        Y3 = Y0[N1+N2:]
+        PHI1 = PHI[:N1]
+        PHI2 = PHI[N1:N1+N2]
+        PHI3 = PHI[N1+N2:]
+        Y1 = Y[:N1]
+        Y2 = Y[N1:N1+N2]
+        Y3 = Y[N1+N2:]
 
         # normalize data
         if normalize:
-            PHI1 = self._normalize_data(PHI1,PHI1)
-            PHI2 = self._normalize_data(PHI2,PHI1)
-            PHI3 = self._normalize_data(PHI3,PHI1)
+            PHI1 = self.__normalize_data(PHI1,PHI1)
+            PHI2 = self.__normalize_data(PHI2,PHI1)
+            PHI3 = self.__normalize_data(PHI3,PHI1)
 
-        # # add results as attributes
-        # self.train = dict(PHI=PHI1, Y=Y1, normalized=normalize)
-        # self.validate = dict(PHI=PHI2, Y=Y2, normalized=normalize)
-        # self.test = dict(PHI=PHI3, Y=Y3, normalized=normalize)
+        train = pd.Series( dict(PHI=PHI1, Y=Y1, normalized=normalize, N=PHI1.shape[0]) )
+        validate = pd.Series( dict(PHI=PHI2, Y=Y2, normalized=normalize, N=PHI2.shape[0]) )
+        test = pd.Series( dict(PHI=PHI3, Y=Y3, normalized=normalize, N=PHI3.shape[0]) )
 
-        pd.Series( dict(PHI=PHI1, Y=Y1, normalized=normalize) ).to_pickle('./train.pkl')
-        pd.Series( dict(PHI=PHI2, Y=Y2, normalized=normalize) ).to_pickle('./validate.pkl')
-        pd.Series( dict(PHI=PHI3, Y=Y3, normalized=normalize) ).to_pickle('./test.pkl')
-        print("\nsaved 'train.pkl', 'validate.pkl', and 'test.pkl'")
+        if assign:
+            self.train = train
+            self.validate = validate
+            self.test = test
+            self.D = PHI1.shape[1]
+            print("\nassigned 'D', 'K', 'train', 'validate', and 'test' as attributes")
+
+        if pickle:
+            train.to_pickle('train.pkl')
+            validate.to_pickle('validate.pkl')
+            test.to_pickle('test.pkl')
+            print("\npickled 'train.pkl', 'validate.pkl', and 'test.pkl'")
+
+        if output: return train,validate,test
 
     #===========================================================================
-    # diagnostic
+    # helper functions
+    #===========================================================================
+
+    @staticmethod
+    def _shuffle(*args):
+        idx = np.random.RandomState(seed=0).permutation(len(args[0]))
+        return [X[idx] for X in args]
+
+    @staticmethod
+    def _one_hot_encode(y):
+        N = len(y)
+        K = len(set(y))
+
+        Y = np.zeros((N,K))
+
+        for i in range(N):
+            Y[i,y[i]] = 1
+
+        return Y
+
+    @staticmethod
+    def _softmax(H):
+        eH = np.exp(H)
+        return eH / eH.sum(axis=1, keepdims=True)
+
+    def _cross_entropy(self,Y):
+        return -np.sum(Y*np.log(self.Z[self.L]))
+
+    @staticmethod
+    def _accuracy(Y, P_hat):
+        return np.mean(Y.argmax(axis=1) == P_hat.argmax(axis=1))
+
+    @staticmethod
+    def _confusion_matrix(Y,P_hat):
+        Y_hat = self._one_hot_encode(P_hat.argmax(axis=1))
+        return np.matmul(Y.T,Y_hat)
+
+    #===========================================================================
+    # diagnostic - make a separte class for these?
     #===========================================================================
 
     # def plot_Y_vs_Y_hat(tvt_results):
@@ -120,6 +174,6 @@ class Base:
     #     print(f"\nsaved {filename}")
     #     plt.close(fig)
 
-    # nothing yet
-    def p_test(tvt_results,alpha=0.05):
-        return
+    # # nothing yet
+    # def p_test(tvt_results,alpha=0.05):
+    #     return
