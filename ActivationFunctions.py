@@ -14,8 +14,7 @@ class softmax:
         return eH / eH.sum(axis=1, keepdims=True)
 
     @ staticmethod
-    def df(H,**kwargs):
-        Z = self.f(H)
+    def df(Z,**kwargs):
         return Z * (1 - Z)
 
 class tanh:

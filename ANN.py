@@ -39,7 +39,7 @@ class ArtificalNeuralNet(Base):
         self.l = range(2,self.L)
 
     #===========================================================================
-    # predict
+    # predict - seems to work
     #===========================================================================
 
     def feed_forward(self,X):
@@ -58,10 +58,12 @@ class ArtificalNeuralNet(Base):
         self.Z = Z
 
     #===========================================================================
-    # solve
+    # solve - seems to work
     #===========================================================================
 
     def solve_vanilla(self,*args,**kwargs):
+
+        print("\nsolve using vanilla gradient descent...")
 
         #=======================================================================
         # setup
@@ -104,8 +106,8 @@ class ArtificalNeuralNet(Base):
 
                 # start with output layer
                 dH[self.L] = self.Z[self.L] - Y_b
-                dW[self.L] = np.matmul( self.Z[self.L-1].T , dH[self.L] )
-                db[self.L] = dH[self.L].sum(axis=0)
+                dW[self.L] = (np.matmul( self.Z[self.L-1].T , dH[self.L] ) + lambda2*self.W[self.L]) / self.train.N
+                db[self.L] = dH[self.L].sum(axis=0) / self.train.N
                 self.W[self.L] -= eta*dW[self.L]
                 self.b[self.L] -= eta*db[self.L]
 
@@ -113,15 +115,15 @@ class ArtificalNeuralNet(Base):
                 for l in np.arange(2,self.L)[::-1]:
                     dZ[l] = np.matmul( dH[l+1] , self.W[l+1].T )
                     dH[l] = dZ[l] * self.af[l].df(self.Z[l])
-                    dW[l] = np.matmul( self.Z[l-1].T , dH[l] )
-                    db[l] = dH[l].sum(axis=0)
+                    dW[l] = (np.matmul( self.Z[l-1].T , dH[l] ) + lambda2*self.W[l] ) / self.train.N
+                    db[l] = dH[l].sum(axis=0) / self.train.N
                     self.W[l] -= eta*dW[l]
                     self.b[l] -= eta*db[l]
 
                 # end with input layer
                 dZ[1] = np.matmul( dH[2] , self.W[2].T )
                 dH[1] = dZ[1] * self.af[1].df(self.Z[1])
-                dW[1] = np.matmul( X_b.T , dH[1] )
+                dW[1] = (np.matmul( X_b.T , dH[1] ) + lambda2*self.W[1] ) / self.train.N
                 db[1] = dH[1].sum(axis=0)
                 self.W[1] -= eta*dW[1]
                 self.b[1] -= eta*db[1]
@@ -129,11 +131,11 @@ class ArtificalNeuralNet(Base):
                 # get training batch objective function
                 index = batch + (epoch*batches)
                 self.feed_forward(self.train['PHI'])
-                J_train[index] = self._cross_entropy(self.train.Y) / self.train.N
+                J_train[index] = (self._cross_entropy(self.train.Y) + lambda2*self.__L2() ) / self.train.N
 
                 # get validation batch objective function
                 self.feed_forward(self.validate['PHI'])
-                J_validate[index] = self._cross_entropy(self.validate.Y) / self.validate.N
+                J_validate[index] = (self._cross_entropy(self.validate.Y) + lambda2*self.__L2() ) / self.validate.N
 
         # collect results
         results = {
@@ -152,6 +154,8 @@ class ArtificalNeuralNet(Base):
         if save_plot: self.plot_objective_functions(*args,**kwargs)
 
     def solve_momentum(self,*args,**kwargs):
+
+        print("\nsolve using Nesterov momenum...")
 
         #=======================================================================
         # setup
@@ -261,10 +265,12 @@ class ArtificalNeuralNet(Base):
         self.momentum_results = pd.Series(results)
 
         if save_plot:
-            method = 'momentum'
+            kwargs['method'] = 'momentum'
             self.plot_objective_functions(*args,**kwargs)
 
     def solve_RMSProp(self,*args,**kwargs):
+
+        print("\nsolving using RMSProp with Nesterov momenumtum...")
 
         #=======================================================================
         # setup
@@ -317,8 +323,8 @@ class ArtificalNeuralNet(Base):
                 # start with output layer
                 # vanilla
                 dH[self.L] = self.Z[self.L] - Y_b
-                dW[self.L] = np.matmul( self.Z[self.L-1].T , dH[self.L] )
-                db[self.L] = dH[self.L].sum(axis=0)
+                dW[self.L] = (np.matmul( self.Z[self.L-1].T , dH[self.L] ) + lambda2*self.W[self.L] ) / self.train.N
+                db[self.L] = dH[self.L].sum(axis=0) / self.train.N
                 # RMSProp with Nestorov momentum
                 GW[self.L] = gamma*GW[self.L] + (1-gamma)*dW[self.L]**2
                 Gb[self.L] = gamma*Gb[self.L] + (1-gamma)*db[self.L]**2
@@ -333,8 +339,8 @@ class ArtificalNeuralNet(Base):
                     # vanilla
                     dZ[l] = np.matmul( dH[l+1] , self.W[l+1].T )
                     dH[l] = dZ[l] * self.af[l].df(self.Z[l])
-                    dW[l] = np.matmul( self.Z[l-1].T , dH[l] )
-                    db[l] = dH[l].sum(axis=0)
+                    dW[l] = (np.matmul( self.Z[l-1].T , dH[l] ) + lambda2*self.W[l]) / self.train.N
+                    db[l] = dH[l].sum(axis=0) / self.train.N
                     # RMSProp with Nesterov momentum
                     GW[l] = gamma*GW[l] + (1-gamma)*dW[l]**2
                     Gb[l] = gamma*Gb[l] + (1-gamma)*db[l]**2
@@ -348,8 +354,8 @@ class ArtificalNeuralNet(Base):
                 # vanilla
                 dZ[1] = np.matmul( dH[2] , self.W[2].T )
                 dH[1] = dZ[1] * self.af[1].df(self.Z[1])
-                dW[1] = np.matmul( X_b.T , dH[1] )
-                db[1] = dH[1].sum(axis=0)
+                dW[1] = (np.matmul( X_b.T , dH[1] ) + lambda2*self.W[1]) / self.train.N
+                db[1] = dH[1].sum(axis=0) / self.train.N
                 # RMSProp with Nesterov momentum
                 GW[1] = gamma*GW[1] + (1-gamma)*dW[1]**2
                 Gb[1] = gamma*Gb[1] + (1-gamma)*db[1]**2
@@ -362,11 +368,11 @@ class ArtificalNeuralNet(Base):
                 # get training batch objective function
                 index = batch + (epoch*batches)
                 self.feed_forward(self.train['PHI'])
-                J_train[index] = self._cross_entropy(self.train.Y) / self.train.N
+                J_train[index] = (self._cross_entropy(self.train.Y) + lambda2*self.__L2()) / self.train.N
 
                 # get validation batch objective function
                 self.feed_forward(self.validate['PHI'])
-                J_validate[index] = self._cross_entropy(self.validate.Y) / self.validate.N
+                J_validate[index] = (self._cross_entropy(self.validate.Y) + lambda2*self.__L2() ) / self.validate.N
 
         # collect results
         results = {
@@ -386,11 +392,13 @@ class ArtificalNeuralNet(Base):
         self.RMSProp_results = pd.Series(results)
 
         if save_plot:
-            method = 'RMSProp'
+            kwargs['method'] = 'RMSProp'
             self.plot_objective_functions(*args,**kwargs)
 
     # not working with batch?
     def solve_Adam(self,*args,**kwargs):
+
+        print("\nsolving using Adam...")
 
         #=======================================================================
         # setup
@@ -512,7 +520,7 @@ class ArtificalNeuralNet(Base):
         self.adam_results = pd.Series(results)
 
         if save_plot:
-            method = 'adam'
+            kwargs['method'] = 'adam'
             self.plot_objective_functions(*args,**kwargs)
 
     def plot_objective_functions(self,*args,**kwargs):
@@ -534,6 +542,9 @@ class ArtificalNeuralNet(Base):
             if plot_validate:
                 ax.plot(self.vanilla_results.J_validate, label='Vanilla - Validation')
             savename += '_vanilla'
+            lambda1 = self.vanilla_results.lambda1
+            lambda2 = self.vanilla_results.lambda2
+            eta = self.vanilla_results.eta
 
         if 'momentum' in method:
             if not hasattr(self,'momentum_results'):
@@ -542,6 +553,9 @@ class ArtificalNeuralNet(Base):
             if plot_validate:
                 ax.plot(self.momentum_results.J_validate, label='Momentum - Validation')
             savename += '_momentum'
+            lambda1 = self.momentum_results.lambda1
+            lambda2 = self.momentum_results.lambda2
+            eta = self.momentum_results.eta
 
         if 'RMSProp' in method:
             if not hasattr(self,'RMSProp_results'):
@@ -550,17 +564,24 @@ class ArtificalNeuralNet(Base):
             if plot_validate:
                 ax.plot(self.RMSProp_results.J_validate, label="RMSProp - Validation")
             savename += '_RMSProp'
+            lambda1 = self.RMSProp_results.lambda1
+            lambda2 = self.RMSProp_results.lambda2
+            eta = self.RMSProp_results.eta
 
         if 'adam' in method:
             if not hasattr(self,'adam_results'):
                 self.solve_Adam(*args,**kwargs)
-            ax.plot(self.adam.J_train, label='Adam - Training')
+            ax.plot(self.adam_results.J_train, label='Adam - Training')
             if plot_validate:
-                ax.plot(self.adam.J_validate, label='Adam - Validation')
+                ax.plot(self.adam_results.J_validate, label='Adam - Validation')
             savename += '_adam'
+            lambda1 = self.adam_results.lambda1
+            lambda2 = self.adam_results.lambda2
+            eta = self.adam_results.eta
 
         ax.set_xlabel("batch + (epochs x baches)")
         ax.set_ylabel("J")
+        fig.suptitle(f"$\\eta$: {eta}, $\\lambda_1$: {lambda1}, $\\lambda_2$: {lambda2}")
         ax.legend(loc='best')
         savename += ".pdf"
         fig.savefig(savename)
@@ -568,7 +589,7 @@ class ArtificalNeuralNet(Base):
         print(f"saved {savename}")
 
     #===========================================================================
-    # cross validation
+    # cross validation - need to check
     #===========================================================================
 
     def train_validate_test(self,*args,**kwargs):
@@ -577,36 +598,72 @@ class ArtificalNeuralNet(Base):
         output = kwargs['output'] if 'output' in kwargs else True
         pickle = kwargs['pickle'] if 'pickle' in kwargs else True
         assign = kwargs['assign'] if 'assign' in kwargs else True
+        method = kwargs['method'] if 'method' in kwargs else 'vanilla'
 
-        # collect accuracy
+        # # if the desired results are not assigned already, get the vanilla results
+        # if hasattr(self,f"{results}_results"):
+        #     print(f"\nusing {results}_results")
+        #     solve_results = getattr(self,f"{results}_results")
+        # else:
+        #     print(f"{results} not found. Looking for vanilla results...")
+        #     if not hasattr(self,f"vanilla_results"):
+        #         print("\nvanilla results not found\ngetting vanilla results...")
+        #         self.solve_vanilla(*args,**kwargs)
+        #     solve_results = self.vanilla_results
+        if 'results' in kwargs:
+            assert hasattr(self,kwargs['results']), "Results not found! try either using a solve method or load a set of results."
+            solve_results = getattr(self,f"{results}_results")
+        else:
+            if method == 'vanilla':
+                self.solve_vanilla(*args,**kwargs)
+                solve_results = self.vanilla_results
+            elif method == 'momentum':
+                self.solve_momentum(*args,**kwargs)
+                solve_results = self.momentum_results
+            elif method == 'RMSProp':
+                self.solve_RMSProp(*args,**kwargs)
+                solve_results = self.RMSProp_results
+            elif method == 'adam':
+                self.solve_Adam(*args,**kwargs)
+                solve_results = self.adam_results
+            else:
+                raise KeyError("I'm sorry, these are not the methods you are looking for...")
+
+        # set weights and bias
+        self.W = solve_results.W
+        self.b = solve_results.b
+
         accuracy = {}
 
         # train
-        self.back_propagation(*args,**kwargs)
-        Z_train = self.feed_forward(self.train['PHI'])
-        accuracy['train'] = self._accuracy(self.train['Y'],Z_train[self.L])
+        self.feed_forward(self.train['PHI'])
+        accuracy['train'] = self._accuracy(self.train['Y'],self.Z[self.L])
 
         # validate
         Z_validate = self.feed_forward(self.validate['PHI'])
-        accuracy['validate'] = self._accuracy(self.validate['Y'],Z_validate[self.L])
+        accuracy['validate'] = self._accuracy(self.validate['Y'],self.Z[self.L])
 
         # test
-        Z_test = self.feed_forward(self.test['PHI'])
-        accuracy['test'] = self._accuracy(self.test['Y'],Z_test[self.L])
+        self.feed_forward(self.test['PHI'])
+        accuracy['test'] = self._accuracy(self.test['Y'],self.Z[self.L])
+        P_hat = self.Z[self.L]
+        y_hat = P_hat.argmax(axis=1)
 
         # collect results
         results = {
             'accuracy'  :   accuracy,
-            'P_hat'     :   Z_test[self.L],
-            'CM'        :   self._confusion_matrix(self.test['Y'],Z_test[self.L]),
-            'W'         :   self.W,
-            'b'         :   self.b,
-            'lambda1'   :   self.lambda1,
-            'lambda2'   :   self.lambda2,
-            'eta'       :   self.eta,
-            'epochs'    :   self.epochs,
-            'batch_size':   self.batch_size
+            'P_hat'     :   P_hat
             }
+
+        try:
+            Y_hat = self._one_hot_encode(y_hat)
+            CM = np.array( np.matmul(self.test.Y.T,Y_hat), dtype=np.int32 )
+            results['Y_hat'] = Y_hat
+            results['CM'] = CM
+        except:
+            print("some goram problem with confusion matrix!")
+
+        results.update(solve_results)
 
         # assign if current results are the best
         if assign:
@@ -628,13 +685,13 @@ class ArtificalNeuralNet(Base):
                 best = np.array([ x[ x.find("_")+1 : x.find(".pkl") ] for x in DIR ], dtype=np.float32).max()
                 if accuracy['validate'] > best:
                     print("\nfound new best result!")
-                    pd.Series(results).to_pickle("results_{:0.4}.pkl".format(acc))
+                    pd.Series(results).to_pickle("results_{:0.4}.pkl".format(accuracy['validate']))
                 else:
                     print("\nno such luck...")
             # if there are no results, just save the current results
             else:
                 print("\nfound new best result!")
-                pd.Series(results).to_pickle("results_{:0.4}.pkl".format(acc))
+                pd.Series(results).to_pickle("results_{:0.4}.pkl".format(accuracy['validate']))
 
         print("Accuracy from this round: {:0.4f}".format(accuracy['validate']))
         # pd.Series(results).to_pickle("results_{:0.4f}.pkl".format(accuracy['test']))
@@ -643,10 +700,12 @@ class ArtificalNeuralNet(Base):
         if output: return results
 
     #===========================================================================
-    # helper functions
+    # helper functions - seems to work
     #===========================================================================
 
     def __assign_random_weights_and_biases(self,*args,**kwargs):
+
+        print("\nassigning random weights and biases...")
 
         # kwargs
         seed = kwargs['seed'] if 'seed' in kwargs else 0
@@ -677,6 +736,8 @@ class ArtificalNeuralNet(Base):
 
     def __check_for_data_sets(self,*args,**kwargs):
 
+        print("\nchecking for data...")
+
         # check for training data
         if not hasattr(self,'train'):
 
@@ -684,3 +745,9 @@ class ArtificalNeuralNet(Base):
 
             print("\ndata sets not detected\ngeting data sets...")
             self._cv_tvt_data_sets(*args,**kwargs)
+
+    def __L2(self):
+        L2 = 0
+        for W in self.W.values():
+            L2 += (W**2).sum()
+        return L2/2

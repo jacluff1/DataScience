@@ -150,8 +150,7 @@ class Base:
     def _accuracy(Y, P_hat):
         return np.mean(Y.argmax(axis=1) == P_hat.argmax(axis=1))
 
-    @staticmethod
-    def _confusion_matrix(Y,P_hat):
+    def _confusion_matrix(self,Y,P_hat):
         Y_hat = self._one_hot_encode(P_hat.argmax(axis=1))
         return np.matmul(Y.T,Y_hat)
 
