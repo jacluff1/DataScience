@@ -44,7 +44,7 @@ class Base:
         # output
         return PHI
 
-    def _denormalize_weights(self):
+    def denormalize_weights(self):
 
         # alias xmin and xmax
         xmax = self.xmax_normalization
@@ -57,7 +57,7 @@ class Base:
     # cross validation
     #===========================================================================
 
-    def _cv_tvt_data_sets(self,PHI,Y,**kwargs):
+    def cv_tvt_data_sets(self,PHI,Y,**kwargs):
 
         # kwargs
         assign = kwargs['assign'] if 'assign' in kwargs else True
@@ -71,12 +71,12 @@ class Base:
         N = PHI.shape[0]
 
         # shuffle data
-        PHI,Y = self._shuffle(PHI,Y)
+        PHI,Y = self.shuffle(PHI,Y)
 
         try:
             self.K = Y.shape[1]
         except:
-            Y = self._one_hot_encode(Y)
+            Y = self.one_hot_encode(Y)
             self.K = Y.shape[1]
 
         # get number of observations for each set
@@ -122,12 +122,12 @@ class Base:
     #===========================================================================
 
     @staticmethod
-    def _shuffle(*args):
+    def shuffle(*args):
         idx = np.random.RandomState(seed=0).permutation(len(args[0]))
         return [X[idx] for X in args]
 
     @staticmethod
-    def _one_hot_encode(y):
+    def one_hot_encode(y):
         N = len(y)
         K = len(set(y))
 
@@ -139,19 +139,19 @@ class Base:
         return Y
 
     @staticmethod
-    def _softmax(H):
+    def softmax(H):
         eH = np.exp(H)
         return eH / eH.sum(axis=1, keepdims=True)
 
-    def _cross_entropy(self,Y):
+    def cross_entropy(self,Y):
         return -np.sum(Y*np.log(self.Z[self.L]))
 
     @staticmethod
-    def _accuracy(Y, P_hat):
+    def accuracy(Y, P_hat):
         return np.mean(Y.argmax(axis=1) == P_hat.argmax(axis=1))
 
-    def _confusion_matrix(self,Y,P_hat):
-        Y_hat = self._one_hot_encode(P_hat.argmax(axis=1))
+    def confusion_matrix(self,Y,P_hat):
+        Y_hat = self.one_hot_encode(P_hat.argmax(axis=1))
         return np.matmul(Y.T,Y_hat)
 
     #===========================================================================

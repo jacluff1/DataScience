@@ -14,8 +14,8 @@ class softmax:
         return eH / eH.sum(axis=1, keepdims=True)
 
     @ staticmethod
-    def df(Z,**kwargs):
-        return Z * (1 - Z)
+    def df(Hbar,**kwargs):
+        return Hbar * (1 - Hbar)
 
 class tanh:
 
@@ -30,8 +30,8 @@ class tanh:
         return np.tanh(H)
 
     @staticmethod
-    def df(Z,**kwargs):
-        return 1 - Z**2
+    def df(Hbar,**kwargs):
+        return 1 - Hbar**2
 
 class ReLU:
 
@@ -43,8 +43,8 @@ class ReLU:
         return H*(H > 0)
 
     @staticmethod
-    def df(Z,**kwargs):
-        return 1*(Z > 0)
+    def df(Hbar,**kwargs):
+        return 1*(Hbar > 0)
 
 class LReLU:
 
@@ -57,6 +57,6 @@ class LReLU:
         return H*(H >= 0) + H*alpha*(H < 0)
 
     @staticmethod
-    def df(Z,**kwargs):
+    def df(Hbar,**kwargs):
         alpha = kwargs['alpha'] if 'alpha' in kwargs else 0.01
-        return 1*(Z >= 0) + alpha*(Z < 0)
+        return 1*(Hbar >= 0) + alpha*(Hbar < 0)
